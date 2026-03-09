@@ -3956,6 +3956,11 @@
   dependencies:
     localforage "^1.10.0"
 
+"@kanaries/causal@0.1.0":
+  version "0.1.0"
+  resolved "https://registry.npmjs.org/@kanaries/causal/-/causal-0.1.0.tgz#33ef3e8a9048e69b041af0ba41a0c05eea4d0673"
+  integrity sha512-DEnMH5EappxCKzP/1Dd17WG3MNny8NcUBeX2HEihZcSxojzRduitYy5Ws0VErk2Wiet5iS9RdWAurihFxWD0kA==
+
 "@kanaries/graphic-walker@^0.4.50":
   version "0.4.50"
   resolved "https://registry.npmmirror.com/@kanaries/graphic-walker/-/graphic-walker-0.4.50.tgz#b117f41b8c16c3cca305d3280b28b0dcd3ebf4a3"
@@ -5027,14 +5032,14 @@
   resolved "https://registry.yarnpkg.com/@types/range-parser/-/range-parser-1.2.4.tgz#cd667bcfdd025213aafb7ca5915a932590acdcdc"
   integrity sha512-EEhsLsD6UsDM1yFhAvy0Cjr6VwmpMWqFBCb9w07wVugF7w9nfajxLuVmngTIpgS6svCnm6Vaw+MZhoDCKnOfsw==
 
-"@types/react-dom@^17.0.1", "@types/react-dom@^17.x":
+"@types/react-dom@^17.0.1":
   version "17.0.25"
   resolved "https://registry.yarnpkg.com/@types/react-dom/-/react-dom-17.0.25.tgz#e0e5b3571e1069625b3a3da2b279379aa33a0cb5"
   integrity sha512-urx7A7UxkZQmThYA4So0NelOVjx3V4rNFVJwp0WZlbIK5eM4rNJDiN3R/E9ix0MBh6kAEojk/9YL+Te6D9zHNA==
   dependencies:
     "@types/react" "^17"
 
-"@types/react@*", "@types/react@^17", "@types/react@^17.0.2", "@types/react@^17.x":
+"@types/react@*", "@types/react@^17", "@types/react@^17.0.2":
   version "17.0.75"
   resolved "https://registry.yarnpkg.com/@types/react/-/react-17.0.75.tgz#cffbc76840a12fcadaf5a3cf14878bb06efcf73d"
   integrity sha512-MSA+NzEzXnQKrqpO63CYqNstFjsESgvJAdAyyJ1n6ZQq/GLgf6nOfIKwk+Twuz0L1N6xPe+qz5xRCJrbhMaLsw==
