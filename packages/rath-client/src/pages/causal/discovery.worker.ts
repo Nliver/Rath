@@ -13,6 +13,7 @@ import {
     cdnod,
     exactSearch,
     executeSerializablePcTask,
+    fci,
     ges,
     gin,
     grasp,
@@ -22,6 +23,7 @@ import type { NumericMatrix } from '@kanaries/causal';
 import type { IRow } from '../../interfaces';
 import type { PagLink } from './config';
 import type { CausalDiscoveryField, CausalDiscoveryRequest, CausalDiscoveryResult } from './discoveryTypes';
+import { xLearner } from './xLearner';
 
 type EncodedColumn = {
     fid: string;
@@ -338,6 +340,13 @@ function expandFocusedFields(fields: readonly Pick<CausalDiscoveryField, 'fid'>[
     return expanded;
 }
 
+function expandFieldIds(fieldIds: readonly string[], sourceFieldId: string): string[] {
+    const matches = fieldIds.filter((fieldId) =>
+        fieldId === sourceFieldId || (fieldId.startsWith(`${sourceFieldId}.[`) && fieldId.endsWith(']'))
+    );
+    return matches.length > 0 ? matches : [sourceFieldId];
+}
+
 function buildBackgroundKnowledge(
     bgKnowledgesPag: readonly PagLink[],
     focusedFields: readonly string[]
@@ -350,23 +359,33 @@ function buildBackgroundKnowledge(
     let hasRule = false;
 
     for (const link of bgKnowledgesPag) {
-        if (!focused.has(link.src) || !focused.has(link.tar)) {
+        const sourceMatches = expandFieldIds(focusedFields, link.src).filter((fieldId) => focused.has(fieldId));
+        const targetMatches = expandFieldIds(focusedFields, link.tar).filter((fieldId) => focused.has(fieldId));
+        if (sourceMatches.length === 0 || targetMatches.length === 0) {
             continue;
         }
-        if (link.src_type === -1 && link.tar_type === 1) {
-            knowledge.addRequired(link.src, link.tar);
-            hasRule = true;
-        } else if (link.src_type === 1 && link.tar_type === -1) {
-            knowledge.addRequired(link.tar, link.src);
-            hasRule = true;
-        }
-        if (link.src_type === 0) {
-            knowledge.addForbidden(link.src, link.tar);
-            hasRule = true;
-        }
-        if (link.tar_type === 0) {
-            knowledge.addForbidden(link.tar, link.src);
-            hasRule = true;
+
+        for (const sourceField of sourceMatches) {
+            for (const targetField of targetMatches) {
+                if (sourceField === targetField) {
+                    continue;
+                }
+                if (link.src_type === -1 && link.tar_type === 1) {
+                    knowledge.addRequired(sourceField, targetField);
+                    hasRule = true;
+                } else if (link.src_type === 1 && link.tar_type === -1) {
+                    knowledge.addRequired(targetField, sourceField);
+                    hasRule = true;
+                }
+                if (link.src_type === 0) {
+                    knowledge.addForbidden(sourceField, targetField);
+                    hasRule = true;
+                }
+                if (link.tar_type === 0) {
+                    knowledge.addForbidden(targetField, sourceField);
+                    hasRule = true;
+                }
+            }
         }
     }
 
@@ -389,30 +408,67 @@ function buildExactSearchKnowledge(
     let hasRule = false;
 
     for (const link of bgKnowledgesPag) {
-        const sourceIndex = indexByField.get(link.src);
-        const targetIndex = indexByField.get(link.tar);
-        if (sourceIndex === undefined || targetIndex === undefined) {
-            continue;
-        }
-        if (link.src_type === 0) {
-            superGraph[sourceIndex][targetIndex] = 0;
-            hasRule = true;
-        }
-        if (link.tar_type === 0) {
-            superGraph[targetIndex][sourceIndex] = 0;
-            hasRule = true;
-        }
-        if (link.src_type === -1 && link.tar_type === 1) {
-            includeGraph[sourceIndex][targetIndex] = 1;
-            hasRule = true;
-        }
-        if (link.src_type === 1 && link.tar_type === -1) {
-            includeGraph[targetIndex][sourceIndex] = 1;
-            hasRule = true;
+        const sourceMatches = expandFieldIds(focusedFields, link.src);
+        const targetMatches = expandFieldIds(focusedFields, link.tar);
+
+        for (const sourceField of sourceMatches) {
+            for (const targetField of targetMatches) {
+                const sourceIndex = indexByField.get(sourceField);
+                const targetIndex = indexByField.get(targetField);
+                if (sourceIndex === undefined || targetIndex === undefined || sourceIndex === targetIndex) {
+                    continue;
+                }
+                if (link.src_type === 0) {
+                    superGraph[sourceIndex][targetIndex] = 0;
+                    hasRule = true;
+                }
+                if (link.tar_type === 0) {
+                    superGraph[targetIndex][sourceIndex] = 0;
+                    hasRule = true;
+                }
+                if (link.src_type === -1 && link.tar_type === 1) {
+                    includeGraph[sourceIndex][targetIndex] = 1;
+                    hasRule = true;
+                }
+                if (link.src_type === 1 && link.tar_type === -1) {
+                    includeGraph[targetIndex][sourceIndex] = 1;
+                    hasRule = true;
+                }
+            }
         }
     }
 
     return hasRule ? { superGraph, includeGraph } : {};
+}
+
+function expandFunctionalDependencies(
+    fields: readonly Pick<CausalDiscoveryField, 'fid'>[],
+    funcDeps: CausalDiscoveryRequest['funcDeps']
+): CausalDiscoveryRequest['funcDeps'] {
+    const fieldIds = fields.map((field) => field.fid);
+    const deduped = new Map<string, CausalDiscoveryRequest['funcDeps'][number]>();
+
+    for (const funcDep of funcDeps) {
+        const targetFieldIds = expandFieldIds(fieldIds, funcDep.fid);
+        for (const param of funcDep.params) {
+            const sourceFieldIds = expandFieldIds(fieldIds, param.fid);
+            for (const sourceFieldId of sourceFieldIds) {
+                for (const targetFieldId of targetFieldIds) {
+                    if (sourceFieldId === targetFieldId) {
+                        continue;
+                    }
+                    const key = `${sourceFieldId}->${targetFieldId}`;
+                    deduped.set(key, {
+                        fid: targetFieldId,
+                        params: [{ fid: sourceFieldId, type: param.type }],
+                        func: funcDep.func,
+                    });
+                }
+            }
+        }
+    }
+
+    return [...deduped.values()];
 }
 
 function graphToMatrix(shape: Parameters<typeof CausalGraph.fromShape>[0]): number[][] {
@@ -553,6 +609,54 @@ function executeAlgorithm(request: CausalDiscoveryRequest): CausalDiscoveryResul
         return {
             matrix: graphToMatrix(result.graph),
             fields: focusedFields,
+        };
+    }
+
+    if (request.algorithm === 'FCI') {
+        const backgroundKnowledge = buildBackgroundKnowledge(request.bgKnowledgesPag, nodeLabels);
+        const result = fci({
+            data: focusedData,
+            ciTest: createCiTest(params.indep_test ?? 'fisherz', focusedData),
+            nodeLabels,
+            alpha: params.alpha,
+            depth: params.depth,
+            maxPathLength: params.max_path_length,
+            ...(backgroundKnowledge ? { backgroundKnowledge } : {}),
+        });
+
+        return {
+            matrix: graphToMatrix(result.graph),
+            fields: focusedFields,
+            extra: {
+                maxDepth: result.maxDepth,
+                testsRun: result.testsRun,
+                sepsets: result.sepsets,
+            },
+        };
+    }
+
+    if (request.algorithm === 'XLearner') {
+        const backgroundKnowledge = buildBackgroundKnowledge(request.bgKnowledgesPag, nodeLabels);
+        const expandedFuncDeps = expandFunctionalDependencies(focusedFields, request.funcDeps);
+        const result = xLearner({
+            data: focusedData,
+            ciTest: createCiTest(params.indep_test ?? 'gsq', focusedData),
+            nodeLabels,
+            alpha: params.alpha,
+            depth: params.depth,
+            maxPathLength: params.max_path_length,
+            ...(backgroundKnowledge ? { backgroundKnowledge } : {}),
+            functionalDependencies: expandedFuncDeps,
+        });
+
+        return {
+            matrix: graphToMatrix(result.graph),
+            fields: focusedFields,
+            extra: {
+                maxDepth: result.maxDepth,
+                testsRun: result.testsRun,
+                sepsets: result.sepsets,
+            },
         };
     }
 

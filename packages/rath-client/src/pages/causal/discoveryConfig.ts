@@ -119,6 +119,36 @@ export function getLocalCausalAlgorithmList(fields: readonly IFieldMeta[]): IAlg
                 ], 'Priority strategy for collider orientation conflicts.'),
             ],
         },
+        FCI: {
+            title: 'FCI Algorithm',
+            description: 'Portable FCI implementation from causal-js. Browser execution is local and does not require Python.',
+            items: [
+                ...BASE_ITEMS,
+                dropdown('indep_test', 'Independence Test', 'fisherz', [
+                    { key: 'chisq', text: 'Chi-square' },
+                    { key: 'fisherz', text: 'Fisher-Z' },
+                    { key: 'gsq', text: 'G-square' },
+                ], 'The independence test used for causal discovery.'),
+                numericSlider('alpha', 'Alpha', 0.05, [0.0001, 1], 0.0001, 'Desired significance level.'),
+                numericSlider('depth', 'Depth', -1, [-1, 8], 1, 'Search depth for fast adjacency search. -1 means unlimited.'),
+                numericSlider('max_path_length', 'Max Path Length', -1, [-1, 16], 1, 'Maximum length of any discriminating path. -1 means unlimited.'),
+            ],
+        },
+        XLearner: {
+            title: 'XLearner Algorithm',
+            description: 'Frontend XLearner implementation built on top of the local FCI pipeline with functional-dependency-aware skeleton enhancement.',
+            items: [
+                ...BASE_ITEMS,
+                dropdown('indep_test', 'Independence Test', 'gsq', [
+                    { key: 'chisq', text: 'Chi-square' },
+                    { key: 'fisherz', text: 'Fisher-Z' },
+                    { key: 'gsq', text: 'G-square' },
+                ], 'The independence test used for causal discovery.'),
+                numericSlider('alpha', 'Alpha', 0.05, [0.0001, 1], 0.0001, 'Desired significance level.'),
+                numericSlider('depth', 'Depth', -1, [-1, 8], 1, 'Search depth for fast adjacency search. -1 means unlimited.'),
+                numericSlider('max_path_length', 'Max Path Length', -1, [-1, 16], 1, 'Maximum length of any discriminating path. -1 means unlimited.'),
+            ],
+        },
         CD_NOD: {
             title: 'CD-NOD Algorithm',
             description: 'Portable CD-NOD implementation from causal-js. The context index is handled entirely in the browser.',

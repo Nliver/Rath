@@ -15,7 +15,7 @@
         "@fluentui/react-components": "^9.19.0",
         "@fluentui/react-file-type-icons": "^8.8.3",
         "@fluentui/react-hooks": "^8.6.11",
-        "@kanaries/causal": "0.1.0",
+        "@kanaries/causal": "0.1.1",
         "@kanaries/graphic-walker": "^0.4.50",
         "@kanaries/loa": "^0.0.16",
         "@kanaries/web-data-loader": "0.1.7",

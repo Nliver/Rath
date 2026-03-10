@@ -3,6 +3,8 @@ import type { PagLink } from "./config";
 
 export type CausalDiscoveryAlgorithm =
     | 'PC'
+    | 'FCI'
+    | 'XLearner'
     | 'CD_NOD'
     | 'GES'
     | 'ExactSearch'
